@@ -1,0 +1,118 @@
+---
+title: "KOMPUTASI STATISTIKA LANJUT"
+author: "WAHIRAH"
+date: '2022-12-20'
+output: html_document
+---
+pengantar
+
+Text mining adalah metode analisis kualitatif yang memungkinkan kita mengekstrak kata kunci atau insight dari data teks. Data teks tidak terstruktur dan harus dibersihkan dan dimanipulasi sebelum analisis apa pun dapat dilakukan. Setelah teks dibersihkan, yaitu kosong dari teks yang tidak informatif seperti, tanda baca dan istilah-istilah tertentu seperti “of”, “the”, “is”, yang dikenal sebagai kata henti, kita kemudian dapat meringkas dan memvisualisasikan karakteristik teks yang tersisa . Kata-kata karakteristik dari data teks ini kemudian dapat dikomunikasikan menggunakan tabel frekuensi, plot, atau awan kata. Kami mungkin juga tertarik pada kata-kata mana yang muncul bersamaan atau berkorelasi. Selain itu, kita dapat menganalisis teks untuk menentukan apakah pokok bahasannya positif, negatif, netral, atau emosi lainnya.
+
+```{r }
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(syuzhet)
+library(ggplot2)
+```
+Tentang Data
+
+Data reviews yang digunakan untuk analisis ini Animal Crossing: New Horizons adalah video game simulasi kehidupan tahun 2020 yang dikembangkan dan diterbitkan oleh Nintendo untuk Nintendo Switch. New Horizons melihat pemain mengambil peran karakter yang dapat disesuaikan yang pindah ke pulau terpencil setelah membeli paket dari Tom Nook, karakter tanuki yang muncul di setiap entri dalam seri Animal Crossing. Berlangsung secara real-time, pemain dapat menjelajahi pulau secara nonlinier, mengumpulkan dan membuat barang, menangkap serangga dan ikan, dan mengembangkan pulau menjadi komunitas hewan antropomorfik.data tersebut diubah ke csv kemudian di import ke R. Sumber data : https://www.kaggle.com/datasets/jessemostipak/animal-crossing
+
+
+```{r }
+# import data teks
+Data_Criti<- read.csv("D:/WAHIRAH/Data_Criti.csv", stringsAsFactors=TRUE)
+data <- Data_Criti$text
+
+# konversi vektor teks menjadi kumpulan dokumen
+words.vec <- VectorSource(data)
+words.corpus <- Corpus(words.vec)
+
+```
+Buat Korpus
+
+Korpus hanyalah kumpulan dokumen. 
+
+```{r }
+# buat transformator konten yang menggantikan pola string dengan spasi
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(words.corpus, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+# mengubah teks menjadi huruf kecil
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Menghapus Angka
+docs <- tm_map(docs, removeNumbers)
+
+#hapus stopwords umum bahasa Inggris
+docs <- tm_map(docs, removeWords, stopwords("english"))
+
+#remove punctuations
+docs <- tm_map(docs, removePunctuation)
+
+# menghilangkan ruang putih ekstra
+docs <- tm_map(docs, stripWhitespace)
+
+# hapus kata berhenti Anda sendiri
+docs <- tm_map(docs, removeWords, c("rated", "ratedn", "place"))
+```
+
+
+```{r}
+# Bangun matriks istilah-dokumen
+docs_dtm <- TermDocumentMatrix(docs)
+dtm_m <- as.matrix(docs_dtm)
+
+# Bangun matriks istilah-dokumen
+```
+Tabel Frekuensi Kata
+
+Kata korpus sekarang diubah menjadi matriks dokumen istilah di mana baris sesuai dengan istilah dan nama kolom adalah dokumen. Tabel frekuensi mengkuantifikasi persyaratan. Ini menunjukkan setiap kata dan berapa kali itu muncul dalam data.
+
+
+```{r}
+docs_dtm <- TermDocumentMatrix(docs)
+dtm_m <- as.matrix(docs_dtm)
+
+# Urutkan berdasarkan penurunan nilai frekuensi
+dtm_v <- sort(rowSums(dtm_m),decreasing=TRUE)
+dtm_d <- data.frame(word = names(dtm_v),freq=dtm_v)
+
+# Tampilkan 5 kata paling sering teratas
+head(dtm_d, 5)
+
+```
+Petak Batang
+
+Plot frekuensi kata hanyalah representasi visual dari tabel frekuensi. Dalam plot batang, panjang batang mewakili frekuensi kata-kata.
+
+```{r}
+# Plot kata-kata yang paling sering
+barplot(dtm_d[1:5,]$freq, las = 2, names.arg = dtm_d[1:5,]$word,
+        col ="lightblue", main ="Top 5 most frequent words",
+        ylab = "Word frequencies")
+
+```
+```{r}
+# mengonversi korpus menjadi data.frame
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing = TRUE)
+df <- data.frame(word = names(v),freq = v)
+
+# membuat wordcloud
+library(wordcloud)
+set.seed(123)
+wordcloud(words = df$word, freq = df$freq, min.freq = 9,
+          max.words = 300, random.order = FALSE, rot.per = 0.35,
+          colors = brewer.pal(8, "Dark2"))
+
+```
+Awan Kata
+
+Awan kata adalah representasi visual dari frekuensi kata. Ini adalah alat yang berguna untuk mengidentifikasi fokus materi tertulis. Kata cloud untuk text tersebut ditunjukkan di bawah ini. Semakin sering istilah tersebut muncul dalam teks, semakin besar kata tersebut muncul dalam gambar. Awan menunjukkan bahwa "new","crossing", "horizons", dan "animal" adalah empat kata terpenting.
+
